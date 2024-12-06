@@ -12,7 +12,7 @@ def preprocess(df, numericals, categoricals):
     
     processed = np.hstack([num_data, cat_data])
     tensors = torch.tensor(processed, dtype=torch.float32)
-    return tensors
+    return tensors, scaler, encoder
 
 class ForwardDiffusion:
     def __init__(self, timesteps, beta_start = 1e-4, beta_end = 0.02):
