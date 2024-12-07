@@ -45,7 +45,7 @@ class ForwardDiffuse:
     
 def Forward_Diffuse(data_nums, data_cats, timestep, total_time, s=0.008):
     forward_diffuse = ForwardDiffuse(data_nums, data_cats, timestep, total_time, s)
-    timesteps_list = range(start = 1,end = total_time+1, step = timestep)
+    timesteps_list = range(1, total_time+1, timestep)
     data_size = data_nums.shape[1] + data_cats.shape[1] + 1
     data_tensor = torch.zeros((len(timesteps_list), data_size))
     for t in timesteps_list:
