@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+import torch.nn.functional as func
 from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
 
 def preprocess(df, nums, cats):
@@ -37,7 +37,7 @@ class ForwardDiffuse:
     def forward_diffuse_cats(self, temperature=1.0):
         gumbel_noise = -torch.log(-torch.log(torch.rand_like(self.data_cats) + 1e-9) + 1e-9)
         noisy_cats = (self.data_cats + gumbel_noise) / temperature
-        cats_soft = F.softmax(noisy_cats, dim=-1)
+        cats_soft = func.softmax(noisy_cats, dim=-1)
         return cats_soft
 
 def Forward_Diffuse(data_nums, data_cats, timestep, total_time, s=0.008):
