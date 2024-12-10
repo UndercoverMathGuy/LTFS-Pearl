@@ -34,9 +34,10 @@ class ForwardDiffuse:
         nums_noise = torch.sqrt(alpha_t) * nums + torch.sqrt(1 - alpha_t) * epsilon
         return nums_noise
     
-    def forward_diffuse_cats(self, temperature=1.0):
+    def forward_diffuse_cats(self, time, cats):
+        alpha_t = self.alpha_schedule[time]
         gumbel_noise = -torch.log(-torch.log(torch.rand_like(self.data_cats) + 1e-9) + 1e-9)
-        noisy_cats = (self.data_cats + gumbel_noise) / temperature
+        noisy_cats = torch.sqrt(alpha_t) * cats + torch.sqrt(1-alpha_t) * gumbel_noise
         cats_soft = func.softmax(noisy_cats, dim=-1)
         return cats_soft
 
@@ -54,3 +55,21 @@ def Forward_Diffuse(data_nums, data_cats, timestep, total_time, s=0.008):
         data_tensor[idx, :, -1] = t  # Assign timestep
     
     return data_tensor, torch.cat((data_nums, data_cats), dim=1)
+
+class DeNoiseTrain:
+    def __init__(self, data_nums_cl, data_cats_cl, data_nums_n, data_cats_n, timestep, total_time, s=0.008):
+        self.data_nums = data_nums_cl
+        self.data_cats = data_cats_cl
+        self.timestep = timestep
+        self.total_time = total_time
+        self.s = s
+        self.data_numnoise = data_nums_n
+        self.data_catnoise = data_cats_n
+    
+    def alpha_ct(self, time):
+        return (torch.cos((((time / self.total_time) + self.s) / (1 + self.s)) * (torch.pi / 2)))**2
+    
+    def noise_added_num(self, time):
+        alpha_t = self.alpha_ct(time)
+        noise = (self.data_numnoise - (torch.sqrt(alpha_t)*self.data_nums))/(torch.sqrt(1-alpha_t))
+        return noise 
