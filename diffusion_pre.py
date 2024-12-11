@@ -36,10 +36,9 @@ class ForwardDiffuse:
     
     def forward_diffuse_cats(self, time, cats):
         alpha_t = self.alpha_schedule[time]
-        gumbel_noise = -torch.log(-torch.log(torch.rand_like(self.data_cats) + 1e-9) + 1e-9)
-        noisy_cats = torch.sqrt(alpha_t) * cats + torch.sqrt(1-alpha_t) * gumbel_noise
-        cats_soft = func.softmax(noisy_cats, dim=-1)
-        return cats_soft
+        epsilon = torch.randn_like(cats)
+        cats_noise = torch.sqrt(alpha_t) * cats + torch.sqrt(1 - alpha_t) * epsilon
+        return cats_noise
 
 def Forward_Diffuse(data_nums, data_cats, timestep, total_time, s=0.008):
     forward_diffuse = ForwardDiffuse(data_nums, data_cats, timestep, total_time, s)
@@ -50,13 +49,13 @@ def Forward_Diffuse(data_nums, data_cats, timestep, total_time, s=0.008):
     
     for idx, t in enumerate(timesteps_list):
         data_nums_noise = forward_diffuse.forward_diffuse_num(idx, data_nums)
-        data_cats_noise = forward_diffuse.forward_diffuse_cats()
+        data_cats_noise = forward_diffuse.forward_diffuse_cats(idx, data_cats)
         data_tensor[idx, :, :-1] = torch.cat((data_nums_noise, data_cats_noise), dim=1)
         data_tensor[idx, :, -1] = t  # Assign timestep
     
     return data_tensor, torch.cat((data_nums, data_cats), dim=1)
 
-class DeNoiseTrain:
+class DeNoiseData:
     def __init__(self, data_nums_cl, data_cats_cl, data_nums_n, data_cats_n, timestep, total_time, s=0.008):
         self.data_nums = data_nums_cl
         self.data_cats = data_cats_cl
@@ -71,5 +70,10 @@ class DeNoiseTrain:
     
     def noise_added_num(self, time):
         alpha_t = self.alpha_ct(time)
-        noise = (self.data_numnoise - (torch.sqrt(alpha_t)*self.data_nums))/(torch.sqrt(1-alpha_t))
-        return noise 
+        noise_num = (self.data_numnoise - (torch.sqrt(alpha_t)*self.data_nums))/(torch.sqrt(1-alpha_t))
+        return noise_num
+    
+    def noise_added_cats_train(self, time):
+        alpha_t = self.alpha_ct(time)
+        noise_cat = (self.data_catnoise - (torch.sqrt(alpha_t)*self.data_cats))/(torch.sqrt(1-alpha_t))
+        return noise_cat
