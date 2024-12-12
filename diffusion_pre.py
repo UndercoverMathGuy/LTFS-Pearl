@@ -1,6 +1,4 @@
 import torch
-import torch.nn as nn
-import torch.nn.functional as func
 from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
 
 def preprocess(df, nums, cats):
@@ -13,8 +11,8 @@ def preprocess(df, nums, cats):
     return scaler, encoder, tensors_num, tensors_cat
 
 class ForwardDiffuse:
-    def __init__(self, data_nums, data_cats, timestep, total_time, s=0.008):
-        self.timestep = timestep
+    def __init__(self, data_nums, data_cats, num_steps, total_time, s=0.008):
+        self.num_steps = num_steps  # Renamed parameter
         self.total_time = total_time
         self.data_nums = data_nums
         self.data_cats = data_cats
@@ -25,55 +23,60 @@ class ForwardDiffuse:
         return (torch.cos((((time / self.total_time) + self.s) / (1 + self.s)) * (torch.pi / 2)))**2
     
     def _compute_alpha_schedule(self):
-        schedule = torch.linspace(0, self.total_time, self.timestep)
+        schedule = torch.linspace(0, self.total_time, steps=self.num_steps)
         return torch.tensor([self._alpha_ct(t) for t in schedule])
     
-    def forward_diffuse_num(self, time, nums):
-        alpha_t = self.alpha_schedule[time]
+    def forward_diffuse_num(self, time_idx, nums):
+        alpha_t = self.alpha_schedule[time_idx]
         epsilon = torch.randn_like(nums)
         nums_noise = torch.sqrt(alpha_t) * nums + torch.sqrt(1 - alpha_t) * epsilon
         return nums_noise
     
-    def forward_diffuse_cats(self, time, cats):
-        alpha_t = self.alpha_schedule[time]
+    def forward_diffuse_cats(self, time_idx, cats):
+        alpha_t = self.alpha_schedule[time_idx]
         epsilon = torch.randn_like(cats)
         cats_noise = torch.sqrt(alpha_t) * cats + torch.sqrt(1 - alpha_t) * epsilon
         return cats_noise
 
-def Forward_Diffuse(data_nums, data_cats, timestep, total_time, s=0.008):
-    forward_diffuse = ForwardDiffuse(data_nums, data_cats, timestep, total_time, s)
-    timesteps_list = list(range(0, total_time, timestep))
+def Forward_Diffuse(data_nums, data_cats, num_steps, total_time, s=0.008):
+    forward_diffuse = ForwardDiffuse(data_nums, data_cats, num_steps, total_time, s)
     batch_size = data_nums.shape[0]
     data_size = data_nums.shape[1] + data_cats.shape[1] + 1
-    data_tensor = torch.zeros((len(timesteps_list), batch_size, data_size))  # Include batch dimension
+    data_tensor = torch.zeros((num_steps, batch_size, data_size))
     
-    for idx, t in enumerate(timesteps_list):
+    for idx in range(num_steps):
         data_nums_noise = forward_diffuse.forward_diffuse_num(idx, data_nums)
         data_cats_noise = forward_diffuse.forward_diffuse_cats(idx, data_cats)
         data_tensor[idx, :, :-1] = torch.cat((data_nums_noise, data_cats_noise), dim=1)
-        data_tensor[idx, :, -1] = t  # Assign timestep
+        data_tensor[idx, :, -1] = idx  # Assign timestep index
     
-    return data_tensor, torch.cat((data_nums, data_cats), dim=1)
+    return data_tensor, torch.cat((data_nums, data_cats), dim=1), torch.arange(num_steps, dtype = torch.long)
 
 class DeNoiseData:
-    def __init__(self, data_nums_cl, data_cats_cl, data_nums_n, data_cats_n, timestep, total_time, s=0.008):
+    def __init__(self, data_nums_cl, data_cats_cl, data_nums_n, data_cats_n, num_steps, total_time, s=0.008):
+        self.num_steps = num_steps  # Renamed parameter
         self.data_nums = data_nums_cl
         self.data_cats = data_cats_cl
-        self.timestep = timestep
+        self.timestep = num_steps
         self.total_time = total_time
         self.s = s
         self.data_numnoise = data_nums_n
         self.data_catnoise = data_cats_n
+        self.alpha_schedule = self._compute_alpha_schedule()  # Precompute schedule
     
-    def alpha_ct(self, time):
-        return (torch.cos((((time / self.total_time) + self.s) / (1 + self.s)) * (torch.pi / 2)))**2
-    
-    def noise_added_num(self, time):
-        alpha_t = self.alpha_ct(time)
+    def _alpha_ct(self, time):
+        return (torch.cos((((time / self.total_time) + self.s) / (1 + self.s)) * (torch.pi / 2))) ** 2
+
+    def _compute_alpha_schedule(self):
+        schedule = torch.linspace(0, self.total_time, steps=self.num_steps)
+        return torch.tensor([self._alpha_ct(t) for t in schedule])
+
+    def noise_added_num(self, time_idx):
+        alpha_t = self.alpha_schedule[time_idx]
         noise_num = (self.data_numnoise - (torch.sqrt(alpha_t)*self.data_nums))/(torch.sqrt(1-alpha_t))
         return noise_num
     
-    def noise_added_cats_train(self, time):
-        alpha_t = self.alpha_ct(time)
+    def noise_added_cats_train(self, time_idx):
+        alpha_t = self.alpha_schedule[time_idx]
         noise_cat = (self.data_catnoise - (torch.sqrt(alpha_t)*self.data_cats))/(torch.sqrt(1-alpha_t))
         return noise_cat
