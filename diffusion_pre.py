@@ -20,7 +20,14 @@ def preprocess(df, nums, cats):
     cat_data = encoder.fit_transform(df[cats]).toarray()  # Ensure it's a 2D array
     tensors_cat = torch.tensor(cat_data, dtype=torch.float32)
     tensors_num = torch.tensor(num_data, dtype=torch.float32)
-    return scaler, encoder, tensors_num, tensors_cat
+    num_num_cols = tensors_num.shape[1]
+    num_cat_cols = tensors_cat.shape[1]
+    # Create mapping for numerical columns
+    num_col_mapping = {i: col_name for i, col_name in enumerate(nums)}
+    # Create mapping for categorical columns after one-hot encoding
+    cat_col_names = encoder.get_feature_names_out(cats)
+    cat_col_mapping = {i: col_name for i, col_name in enumerate(cat_col_names)}
+    return scaler, encoder, tensors_num, tensors_cat, num_num_cols, num_cat_cols, num_col_mapping, cat_col_mapping
 
 class ForwardDiffuse:
     '''
@@ -80,6 +87,8 @@ def Forward_Diffuse(data_nums, data_cats, num_steps, total_time, s=0.008):
     '''
     forward_diffuse = ForwardDiffuse(data_nums, data_cats, num_steps, total_time, s)
     batch_size = data_nums.shape[0]
+    num_num_cols= data_nums.shape[1]
+    num_cat_cols = data_cats.shape[1]
     data_size = data_nums.shape[1] + data_cats.shape[1] + 1
     data_tensor = torch.zeros((num_steps, batch_size, data_size))
     
@@ -89,7 +98,7 @@ def Forward_Diffuse(data_nums, data_cats, num_steps, total_time, s=0.008):
         data_tensor[idx, :, :-1] = torch.cat((data_nums_noise, data_cats_noise), dim=1)
         data_tensor[idx, :, -1] = idx  # Assign timestep index
     
-    return data_tensor, torch.cat((data_nums, data_cats), dim=1), torch.arange(num_steps, dtype = torch.long)
+    return data_tensor, torch.cat((data_nums, data_cats), dim=1), torch.arange(num_steps, dtype = torch.long), num_num_cols, num_cat_cols
 
 class DeNoiseData:
     '''

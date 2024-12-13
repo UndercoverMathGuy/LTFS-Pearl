@@ -78,8 +78,8 @@ def train_model(inputs, outputs, timesteps, num_steps, total_time, s=0.008):
         total_loss = 0
         
         for batch in dataloader:
-            noisy, added_noise, batch_timesteps = batch
-            predicted_noise = model(noisy, batch_timesteps)
+            noisy, added_noise, timestep = batch
+            predicted_noise = model(noisy, timestep)
             loss = func.mse_loss(predicted_noise, added_noise)
             
             optimizer.zero_grad()
@@ -91,3 +91,15 @@ def train_model(inputs, outputs, timesteps, num_steps, total_time, s=0.008):
         print(f"Epoch {epoch + 1}/{num_epochs}, Loss: {avg_loss:.4f}")
     torch.save(model.state_dict(), "tabtransformer.pth")
     print("Model saved as tabtransformer.pth")
+    
+def create_data(noise_data, timesteps, num_num_cols, num_cat_cols):
+    model = TabTransformer(num_inputs = noise_data.shape[1])
+    model.load_state_dict(torch.load("tabtransformer.pth"))
+    model.eval()
+    with torch.no_grad():
+        output = model(noise_data, timesteps)
+    diffused_raw = noise_data - output
+    # Separate numerical and categorical data
+    nums_reconstructed = diffused_raw[:, :num_num_cols]
+    cats_reconstructed = diffused_raw[:, num_num_cols:num_num_cols + num_cat_cols]
+    return nums_reconstructed, cats_reconstructed
