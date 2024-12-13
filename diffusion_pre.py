@@ -1,7 +1,19 @@
 import torch
 from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
-
+ 
 def preprocess(df, nums, cats):
+    '''
+    Preprocesses data using MinMaxScaler for numericals and OneHotEncoder for categoricals.
+    
+    Args: df (pd.DataFrame): Dataframe containing both numerical and categorical columns.
+        nums (list): List of numerical columns.
+        cats (list): List of categorical columns.
+    
+    Returns: scaler (MinMaxScaler): Fitted MinMaxScaler object.
+        encoder (OneHotEncoder): Fitted OneHotEncoder object.
+        tensors_num (torch.Tensor): Tensor containing scaled numerical data.
+        tensors_cat (torch.Tensor): Tensor containing one-hot encoded categorical data.
+    '''
     scaler = MinMaxScaler()
     encoder = OneHotEncoder()
     num_data = scaler.fit_transform(df[nums])
@@ -11,6 +23,20 @@ def preprocess(df, nums, cats):
     return scaler, encoder, tensors_num, tensors_cat
 
 class ForwardDiffuse:
+    '''
+    Class to perform forward diffusion on numerical and categorical data.
+    
+    Init_args: data_nums (torch.Tensor): Tensor containing scaled numerical data.
+        data_cats (torch.Tensor): Tensor containing one-hot encoded categorical data.
+        num_steps (int): Number of diffusion steps.
+        total_time (int): Total time for diffusion.
+        s (float): Smoothing parameter
+        
+    Methods: _alpha_ct: Computes alpha_t for a given time.
+        _compute_alpha_schedule: Computes alpha_t for all time steps.
+        forward_diffuse_num: Adds noise to numerical data.
+        forward_diffuse_cats: Adds noise to categorical data.
+    '''
     def __init__(self, data_nums, data_cats, num_steps, total_time, s=0.008):
         self.num_steps = num_steps  # Renamed parameter
         self.total_time = total_time
@@ -39,6 +65,19 @@ class ForwardDiffuse:
         return cats_noise
 
 def Forward_Diffuse(data_nums, data_cats, num_steps, total_time, s=0.008):
+    '''
+    Function to perform Forward Diffusion using class Forward Diffusion
+    
+    Args: data_nums (torch.Tensor): Tensor containing scaled numerical data.
+        data_cats (torch.Tensor): Tensor containing one-hot encoded categorical data.
+        num_steps (int): Number of diffusion steps.
+        total_time (int): Total time for diffusion.
+        s (float): Smoothing parameter
+        
+    Returns: data_tensor (torch.Tensor): Tensor containing noisy numerical and categorical data.
+        data (torch.Tensor): Tensor containing original numerical and categorical data.
+        time (torch.Tensor): Tensor containing time indices
+    '''
     forward_diffuse = ForwardDiffuse(data_nums, data_cats, num_steps, total_time, s)
     batch_size = data_nums.shape[0]
     data_size = data_nums.shape[1] + data_cats.shape[1] + 1
@@ -53,6 +92,20 @@ def Forward_Diffuse(data_nums, data_cats, num_steps, total_time, s=0.008):
     return data_tensor, torch.cat((data_nums, data_cats), dim=1), torch.arange(num_steps, dtype = torch.long)
 
 class DeNoiseData:
+    '''
+    Class to obtain noise data from noisy data and clean data
+    
+    Init_args: data_nums_cl (torch.Tensor): Tensor containing clean numerical data.
+        data_cats_cl (torch.Tensor): Tensor containing clean categorical data.
+        data_nums_n (torch.Tensor): Tensor containing noisy numerical data.
+        data_cats_n (torch.Tensor): Tensor containing noisy categorical data.
+        num_steps (int): Number of diffusion steps.
+        total_time (int): Total time for diffusion.
+        s (float): Smoothing parameter
+    
+    Methods: noise_added_num: Computes noise added to numerical data.
+        noise_added_cat: Computes noise added to categorical data.
+    '''
     def __init__(self, data_nums_cl, data_cats_cl, data_nums_n, data_cats_n, num_steps, total_time, s=0.008):
         self.num_steps = num_steps  # Renamed parameter
         self.data_nums = data_nums_cl
@@ -76,7 +129,7 @@ class DeNoiseData:
         noise_num = (self.data_numnoise - (torch.sqrt(alpha_t)*self.data_nums))/(torch.sqrt(1-alpha_t))
         return noise_num
     
-    def noise_added_cats_train(self, time_idx):
+    def noise_added_cats(self, time_idx):
         alpha_t = self.alpha_schedule[time_idx]
         noise_cat = (self.data_catnoise - (torch.sqrt(alpha_t)*self.data_cats))/(torch.sqrt(1-alpha_t))
         return noise_cat
