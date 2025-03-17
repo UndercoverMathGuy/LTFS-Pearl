@@ -63,7 +63,7 @@ def objective(trial):
         model = xgb.train(
             params,
             dtrain,
-            num_boost_round=1000,
+            num_boost_round=10000,
             evals=evals,
             early_stopping_rounds=10,
             verbose_eval=False
