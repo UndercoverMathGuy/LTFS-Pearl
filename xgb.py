@@ -6,12 +6,10 @@ from sklearn.metrics import mean_absolute_percentage_error
 from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 import optuna
+from data_cleanup import data_review
 
 epsilon=1e-4
-train_data = pd.read_csv('data/train_data.csv')
-train_data = train_data.loc[train_data['Target_Variable/Total Income'] != 0].copy()
-
-train_data['Target_Variable/Total Income'] = np.log((train_data['Target_Variable/Total Income']+epsilon).clip(lower=1e-8))
+train_data = data_review(train=True)
 
 # Separate raw features and target
 X_raw = train_data.drop(columns=['Target_Variable/Total Income'])
@@ -63,7 +61,7 @@ def objective(trial):
         model = xgb.train(
             params,
             dtrain,
-            num_boost_round=10000,
+            num_boost_round=100,
             evals=evals,
             early_stopping_rounds=10,
             verbose_eval=False
