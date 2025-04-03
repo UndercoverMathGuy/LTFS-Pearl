@@ -2,24 +2,14 @@ import numpy as np
 import pandas as pd
 import hashlib
 
-def sha_bucket(category_value: str, n_buckets: int = 2**16) -> int:
-    """
-    Hashes a string category_value using SHA-256, then maps it to [0, n_buckets-1].
-    
-    :param category_value: The category string
-    :param n_buckets: Number of buckets (must be <= 2^(some bits of truncated hash))
-    :return: An integer bucket index in [0, n_buckets-1]
-    """
-    # 1) Compute SHA-256 digest (32 bytes)
-    digest_bytes = hashlib.sha256(category_value.encode('utf-8')).digest()
-    # 2) Convert the first 8 bytes (or 16, etc.) to a 64-bit integer
-    #    If you need more bits, read more of the digest
-    #    For n_buckets up to 2^16 or 2^20, 64 bits is usually enough.
-    long_val = int.from_bytes(digest_bytes[:8], byteorder='big', signed=False)
-    # 3) Mod by n_buckets
-    bucket_idx = long_val % n_buckets
-    return bucket_idx
+def sha256(val: str, n_buckets:int = 2**32):
+    digest = hashlib.sha256(val.encode('utf-8')).digest()
+    val_64 = int.from_bytes(digest [:18], byteorder = 'big', signed=False)
+    return val_64 % n_buckets
 
+def hash_encode(series: pd.Series, n_buckets:int = 2**32):
+    return series.apply(lambda x: sha256(x, n_buckets))
+    
 def data_review(train:bool = True) -> pd.DataFrame:
     if train == True:
         train_df = pd.read_csv('data/train_data.csv')
@@ -59,18 +49,9 @@ def data_review(train:bool = True) -> pd.DataFrame:
     
     for col in obj_cols:
         # Apply SHA-256 hashing to this column
-        hashed_values = train_df[col].astype(str).apply(lambda x: sha_bucket(x, n_buckets=n_features))
+        hashed_values = hash_encode(train_df[col], n_buckets=n_features)       
         
-        # Create one-hot encoding for the hashed values
-        one_hot_matrix = np.zeros((len(hashed_values), n_features))
-        for i, bucket_idx in enumerate(hashed_values):
-            one_hot_matrix[i, bucket_idx] = 1
-        
-        # Create DataFrame with hashed features
-        col_prefix = f"{col}_hash_"
-        feature_names = [f"{col_prefix}{i}" for i in range(n_features)]
-        hashed_df = pd.DataFrame(one_hot_matrix, columns=feature_names, index=train_df.index)
-        hashed_dfs.append(hashed_df)
+        hashed_dfs.append(hashed_values)
     
     # Combine hashed features with non-object columns
     if hashed_dfs:
@@ -81,11 +62,14 @@ def data_review(train:bool = True) -> pd.DataFrame:
     
     return train_df
 
-
+def read_csv_clean(csv_path:str):
+    train_df_unpacked = pd.read_csv(csv_path, index_col=0)
+    return train_df_unpacked
 
 if __name__ == "__main__":
     train_df = data_review()
+    train_df.to_csv('data/train_data_cleaned.csv', index=True)
+    train_df_unpacked = read_csv_clean('data/train_data_cleaned.csv')
+    print(train_df_unpacked.head())
     print(train_df.head())
-    print(len(train_df.columns))
-    train_raw = pd.read_csv('data/train_data.csv')
-    print(len(train_raw.columns))
+    print(train_df.compare(train_df_unpacked))
