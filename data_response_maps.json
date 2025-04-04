@@ -1,0 +1,7 @@
+{"results": 
+    [{"address_components": [{"long_name": "Seoni", "short_name": "Seoni", "types": ["locality", "political"]}, {"long_name": "Raisen", "short_name": "Raisen", "types": ["administrative_area_level_3", "political"]}, {"long_name": "Madhya Pradesh", "short_name": "MP", "types": ["administrative_area_level_1", "political"]}, {"long_name": "India", "short_name": "IN", "types": ["country", "political"]}], 
+    "formatted_address": "Seoni, Madhya Pradesh, India", 
+    "geometry": 
+        {"bounds": {"northeast": {"lat": 22.9777701, "lng": 78.3900799}, "southwest": {"lat": 22.9352699, "lng": 78.3672101}}, "location": {"lat": 22.9558357, "lng": 78.37568999999999}, "location_type": "APPROXIMATE", "viewport": {"northeast": {"lat": 22.9777701, "lng": 78.3900799}, "southwest": {"lat": 22.9352699, "lng": 78.3672101}}}, 
+    "place_id": "ChIJwZ0U0_71fjkRspXKCTtIFMI", "types": ["locality", "political"]}],
+"status": "OK"}
