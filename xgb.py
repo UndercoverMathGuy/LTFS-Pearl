@@ -6,7 +6,7 @@ from sklearn.metrics import mean_absolute_percentage_error
 from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 import optuna
-from data_cleanup import data_review
+from data_cleaners.data_cleanup import data_review
 
 epsilon=1e-4
 train_data = data_review(train=True)
