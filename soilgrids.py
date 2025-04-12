@@ -8,13 +8,12 @@ def get_soilgrids(lat, lon):
     data = json.loads(response.text)
     return data['wrb_class_name']
 
-def soilgrids_df(coords: tuple):
+def soilgrids_df(coords: pd.DataFrame) -> pd.DataFrame:
     soil_classes = pd.DataFrame(columns=['class'])
-    for i in range(len(coords)):
-        latlon = coords[i]
-        lat = latlon[0]
-        lon = latlon[1]
+    for idx, row in coords.iterrows():
+        lat = row['lat']
+        lon = row['lon']
         soil_class = get_soilgrids(lat, lon)
-        df_row = pd.DataFrame({'class': soil_class}, index=i)
+        df_row = pd.DataFrame({'class': soil_class}, index=idx)
         soil_classes = pd.concat([soil_classes, df_row], ignore_index=False)
     return soil_classes

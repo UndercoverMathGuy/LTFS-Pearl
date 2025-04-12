@@ -17,7 +17,7 @@ def data_review(train:bool = True) -> pd.DataFrame:
         train_df = pd.read_csv('data/test_data.csv')
     train_df.drop_duplicates(inplace=True)
     train_df.reset_index(inplace=True)  # Drop unwanted columns
-    train_df = train_df.drop(columns=['Location', 'Address type', 'Ownership', 'FarmerID', 'Zipcode'])
+    train_df = train_df.drop(columns=['Location', 'Address type', 'Ownership', 'FarmerID'])
     # Filter the target variable column as before
     train_df = train_df[train_df['Target_Variable/Total Income'] != 0]
     # Instead of filtering zero for 'Perc_of_house_with_6plus_room', drop rows missing this value
@@ -27,7 +27,7 @@ def data_review(train:bool = True) -> pd.DataFrame:
     
     # Apply feature hashing only on non-numeric categorical columns
     obj_cols = train_df.select_dtypes(include=['object']).columns
-    
+    obj_cols = [col for col in obj_cols if col not in ['VILLAGE', 'DISTRICT', 'State', 'Zipcode']]
     # Identify numeric categorical columns
     numeric_categorical_cols = []
     for col in obj_cols:
@@ -73,4 +73,5 @@ if __name__ == "__main__":
     print(train_df_unpacked.head())
     print(train_df.head())
     print(train_df.compare(train_df_unpacked))
+    print(train_df_unpacked.columns)
     
